@@ -1,0 +1,204 @@
+# Real-Time-Project-Week-05
+# Frontend
+# 1.index.html code
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Electrician Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h2>Register</h2>
+<input id="ruser" placeholder="Username">
+<input id="rpass" placeholder="Password">
+<select id="role">
+  <option value="admin">Admin</option>
+  <option value="electrician">Electrician</option>
+</select>
+<button onclick="register()">Register</button>
+
+<h2>Login</h2>
+<input id="user" placeholder="Username">
+<input id="pass" placeholder="Password">
+<button onclick="login()">Login</button>
+
+<h2>Add Task</h2>
+<input id="title" placeholder="Task Title">
+<input id="desc" placeholder="Description">
+<button onclick="addTask()">Add Task</button>
+
+<h2>Tasks</h2>
+<ul id="tasks"></ul>
+
+<h2>Upload Report</h2>
+<input type="file" id="file">
+<button onclick="uploadFile()">Upload</button>
+<script src="app.js"></script>
+</body>
+</html>
+
+# 2. app.js code
+// ===== GLOBAL VARIABLES =====
+let token = "";
+const BASE_URL = "http://127.0.0.1:3000";
+
+// ===== REGISTER =====
+async function register() {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: document.getElementById("ruser").value,
+        password: document.getElementById("rpass").value,
+        role: document.getElementById("role").value
+      })
+    });
+
+    const data = await res.json();
+    alert(data.message || "Registered successfully");
+  } catch (err) {
+    console.error(err);
+    alert("Register failed");
+  }
+}
+
+// ===== LOGIN =====
+async function login() {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: document.getElementById("user").value,
+        password: document.getElementById("pass").value
+      })
+    });
+
+    const data = await res.json();
+
+    if (!data.token) {
+      alert(data.message || "Login failed");
+      return;
+    }
+
+    token = data.token;
+    alert("Login successful");
+    loadTasks();
+  } catch (err) {
+    console.error(err);
+    alert("Login failed");
+  }
+}
+
+// ===== ADD TASK =====
+async function addTask() {
+  try {
+    await fetch(`${BASE_URL}/tasks/add`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "authorization": token
+      },
+      body: JSON.stringify({
+        title: document.getElementById("title").value,
+        description: document.getElementById("desc").value
+      })
+    });
+
+    loadTasks();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// ===== LOAD TASKS =====
+async function loadTasks() {
+  try {
+    const res = await fetch(`${BASE_URL}/tasks`, {
+      headers: { "authorization": token }
+    });
+
+    const data = await res.json();
+
+    const list = document.getElementById("tasks");
+    list.innerHTML = "";
+
+    data.forEach(task => {
+      const li = document.createElement("li");
+
+      li.innerHTML = `
+        <b>${task.title}</b> - ${task.status}
+        <br>${task.description}
+        <br>
+        <button onclick="completeTask(${task.id})">Complete</button>
+        <hr>
+      `;
+
+      list.appendChild(li);
+    });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// ===== COMPLETE TASK =====
+async function completeTask(id) {
+  try {
+    await fetch(`${BASE_URL}/tasks/update/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "authorization": token
+      },
+      body: JSON.stringify({ status: "completed" })
+    });
+
+    loadTasks();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// ===== FILE UPLOAD =====
+async function uploadFile() {
+  try {
+    const fileInput = document.getElementById("file");
+
+    if (!fileInput.files.length) {
+      alert("Please select a file first");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    const res = await fetch(`${BASE_URL}/upload`, {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+    alert(data.message || "File uploaded");
+  } catch (err) {
+    console.error(err);
+    alert("Upload failed");
+  }
+}
+
+# 3. style.css code
+body {
+  font-family: Arial;
+  margin: 20px;
+}
+input, select {
+  margin: 5px;
+  padding: 5px;
+}
+button {
+  padding: 5px 10px;
+  margin: 5px;
+}
+
+  
